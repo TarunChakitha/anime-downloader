@@ -162,18 +162,19 @@ if __name__ == "__main__":
         print(f"\n{fg('sky_blue_1')}DOWNLOADING EPISODES...")
         print(f"{fg('white')}",end='')
 
-        for i,url in enumerate(storage_urls):
+        for i,url in enumerate(storage_urls,start=1):
+            if(i in unsucc_eps): continue
             whiteLine()
-            downloadVideoToLocal(url, Folder_name + " EP " + str(i+1), Folder_name + '/' + Folder_name + " EP " + str(i+1))
+            downloadVideoToLocal(url, Folder_name + " EP " + str(i), Folder_name + '/' + Folder_name + " EP " + str(i))
         
         whiteLine()
-
-        if(len(unsucc_eps) != 0):
-            print(f"{fg('red_1')}[*] Sorry. The following episodes have been downloaded succesfully.")
-            for ep in unsucc_eps:
-                print(Folder_name + " EP " + ep)
-
         print(f"{fg('sky_blue_1')}[-] [INFO] Done! {count} Episode(s) downloaded.")
+        if(len(unsucc_eps) != 0):
+            print()
+            print(f"{fg('red_1')}[*] Sorry. The following episodes could not be downloaded.")
+            for ep in unsucc_eps:
+                print('--> '+Folder_name + " EP " + str(ep))
+            print("As of now there is a workaround to get the missing episodes: Try downloading manually from a browser or wait till the api is up. I will fix this issue later.")
         print()
         Bye()
     except KeyboardInterrupt:
