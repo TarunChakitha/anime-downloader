@@ -1,17 +1,43 @@
 import os
 import re
 import sys
+import random
 import requests
-import urllib.request
+import youtube_dl
+import youtube_dl.utils
 import subprocess as sp
 from colored import fg, attr
 from bs4 import BeautifulSoup
-from tqdm.auto import tqdm
 
 reset = attr('reset')
 
 supported_urls = [
     "https://gogoanime2.org/"
+]
+
+User_agents = [
+"Mozilla/5.0 (Windows NT 10.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/72.0.3626.121 Safari/537.36"
+"Mozilla/5.0 (Windows NT 6.1; WOW64; rv:18.0) Gecko/20100101 Firefox/18.0",
+"Mozilla/5.0 (Windows NT 10.0; WOW64; Trident/7.0; rv:11.0) like Gecko",
+"Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/74.0.3729.169 Safari/537.36",
+"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.102 Safari/537.36 Edge/18.18362",
+"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/69.0.3497.100 Safari/537.36",
+"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.79 Safari/537.36 Edge/14.14393",
+"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/44.0.2403.157 Safari/537.36",
+"Mozilla/5.0 (X11; Ubuntu; Linux i686; rv:24.0) Gecko/20100101 Firefox/24.0",
+"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/74.0.3729.157 Safari/537.36"
+"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/11.1.2 Safari/605.1.15"
+"Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10_6_6; en-en) AppleWebKit/533.19.4 (KHTML, like Gecko) Version/5.0.3 Safari/533.19.4"
+"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_5) AppleWebKit/600.8.9 (KHTML, like Gecko) Version/8.0.8 Safari/600.8.9"
+"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_8_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/49.0.2623.112 Safari/537.36"
+"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_5) AppleWebKit/601.2.7 (KHTML, like Gecko) Version/9.0.1 Safari/601.2.7"
+"Mozilla/5.0 (Linux; Android 5.1.1; KFSUWI) AppleWebKit/537.36 (KHTML, like Gecko) Silk/80.5.3 like Chrome/80.0.3987.162 Safari/537.36"
+"Mozilla/5.0 (Linux; U; Android 2.3.4; en-us; Kindle Fire Build/GINGERBREAD) AppleWebKit/533.1 (KHTML, like Gecko) Version/4.0 Mobile Safari/533.1"
+"Mozilla/5.0 (Linux; Android 5.1.1; KFSUWI) AppleWebKit/537.36 (KHTML, like Gecko) Silk/78.4.6 like Chrome/78.0.3904.108 Safari/537.36"
+"Mozilla/5.0 (Linux; Android 5.1.1; KFDOWI) AppleWebKit/537.36 (KHTML, like Gecko) Silk/80.5.3 like Chrome/80.0.3987.162 Safari/537.36"
+"Mozilla/5.0 (Linux; Android 5.1.1; KFFOWI) AppleWebKit/537.36 (KHTML, like Gecko) Silk/76.3.6 like Chrome/76.0.3809.132 Safari/537.36"
+"Mozilla/5.0 (Linux; Android 5.1.1; KFGIWI) AppleWebKit/537.36 (KHTML, like Gecko) Silk/80.5.3 like Chrome/80.0.3987.162 Safari/537.36"
+"Mozilla/5.0 (iPhone; CPU iPhone OS 12_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148"
 ]
 
 def welcomeBanner():
@@ -35,26 +61,41 @@ def welcomeBanner():
 ===============================================================================================================                                    
     {reset}""")
 
-class TqdmUpTo(tqdm):
-    def update_to(self, b=1, bsize=1, tsize=None):
-        if tsize is not None:
-            self.total = tsize
-        self.update(b * bsize - self.n)
+def Bye():
+    print(f"{fg('gold_1')}Thank you for using this scipt.")
+    print("Follow me on LinkedIn @ www.linkedin.com/in/TarunChakitha")
+    print(f"Bye...{reset}")
+    sys.exit()
 
 def greenLine():
-    print(f"{fg('green_1')}---------------------------------------------------------------------------------------------------------------{reset}")
+    """
+    Prints a green line
+    """
+    print(f"{fg('green_1')}---------------------------------------------------------------------------------------------------------------")
 
 def whiteLine():
+    """
+    Prints a white line
+    """
     print("---------------------------------------------------------------------------------------------------------------")
 
 def redLine():
+    """
+    Prints a red line
+    """
     print(f"{fg('red')}---------------------------------------------------------------------------------------------------------------")
 
 def goldLine():
+    """
+    Prints a gold line
+    """
     print(f"{fg('gold_1')}---------------------------------------------------------------------------------------------------------------")
 
 def setGreenn():
-    print(f"{fg('green_1')}")
+    """
+    Sets the terminal font color to green
+    """
+    print(f"{fg('green_1')}",end='')
 
 def try_another_site():
     print(f"{fg('red')}[*] [INFO] Site not working or Cloudflare is blocking the site!{reset}")
@@ -67,31 +108,41 @@ def try_another_site():
     print("Bye...")
     sys.exit()
 
-def check_size(download_url,download_location):
-    local_size = os.stat(download_location).st_size
-    server_size = int(urllib.request.urlopen(download_url).info()['Content-Length'])
-    if(local_size == server_size): return True
-    else: return False
+def my_hook(d):
+    """
+    A reporthook for youtube-dl
+    """
+    if d['status'] == 'downloading':
+        if(d['speed'] != None):
+            speed = round(d['speed']/1e+6,3) if d['speed'] else '-'
+            print(f" [*] [STATUS] Downloading - {round(float(d['downloaded_bytes'])/float(d['total_bytes'])*100,3)} % Speed - {speed} MBps ETA - {d['_eta_str']} min   ",end='\r')
 
 def downloadVideoToLocal(download_url, file_name, download_location):
-    if(os.path.isfile(download_location)):
-        if(check_size(download_url,download_location) == True):
-            print(f"[*] [INFO] {file_name} already downloaded.")
-            return
-        else:
-            print(f"[*] [INFO] {file_name} incomplete Download. Downloading again.")
-            pass
-    opener = urllib.request.build_opener()
-    opener.addheaders = [('User-agent', 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.11 (KHTML, like Gecko) Chrome/23.0.1271.64 Safari/537.11')]
-    urllib.request.install_opener(opener)
+    """
+    Downlaods the video from storage.googleapi url to yuor local machine.
+    Note--> Incase the download is interrupted, re-run the script and it will resume downloading from the last downloaded byte.
+    """
+    youtube_dl.utils.std_headers['User-Agent'] = random.choice(User_agents)
+    ydl_opts = {'format': 'best',
+    'quiet': True,
+    'no_warnings': True,
+    'ignoreerros': True,
+    'outtmpl': download_location,
+    'progress_hooks': [my_hook]
+    }
 
-    with TqdmUpTo(unit='B', unit_scale=True, unit_divisor=1024, miniters=1,
-                  desc=file_name) as t:
-        urllib.request.urlretrieve(
-            download_url, filename=download_location, reporthook=t.update_to, data=None)
-        t.total = t.n
-
+    setGreenn()
+    with youtube_dl.YoutubeDL(ydl_opts) as ydl:
+        print(file_name)
+        ydl.download([download_url])
+    print(f"[-] [STATUS] Download finished.                                             ")
+    
 def fetch_download_links(base_url,total_episodes):
+    """
+    Fetches the storage.googleapis.com video source url from the episode url
+    Note--> Sometimes the googleapis link does not appear and the video plays from a blob url. 
+    It cannot fetch the url if it's a blob url so some episodes may not be downloaded.
+    """
     print(f"{fg('sky_blue_1')}[*] [INFO] Fetching download links...{reset}")
     storage_urls = []
     unsucc_eps = []
@@ -123,7 +174,7 @@ def fetch_download_links(base_url,total_episodes):
                 if l.startswith("https://storage.googleapis.com"):
                     greenLine()
                     print(f"{fg('green_1')}[*] [INFO] Found Episode Number {ep_num}")
-                    storage_urls.append(l)
+                    storage_urls.append((ep_num,l))
                     count += 1
                     streamani_url = ""
                     l = ""
@@ -136,20 +187,16 @@ def fetch_download_links(base_url,total_episodes):
     print(f"{fg('sky_blue_1')}[-] [INFO] Found {count} Episode(s) in total.{reset}")
     return count, storage_urls, unsucc_eps
 
-def Bye():
-    print(f"{fg('gold_1')}Thank you for using this scipt.")
-    print("Follow me on LinkedIn @ www.linkedin.com/in/TarunChakitha")
-    print(f"Bye...{reset}")
-    sys.exit()
-
 if __name__ == "__main__":
     welcomeBanner()
     try:
-        Folder_name =  input(f"{fg('sky_blue_1')}Enter Anime name with season number: ")  # 'My Hero Academia Season 4'
+        Folder_name =  input(f"{fg('sky_blue_1')}Enter Anime name along with season number: ")  # My Hero Academia Season 4
         base = input("Paste the episode link from www1.gogoanime.ai: ") # https://www1.gogoanime.ai/boku-no-hero-academia-4th-season-episode-1
         total_episodes = input("How many episodes you want to download (default 25 - leave blank): ")
+
         if(total_episodes == ''): total_episodes = 25
         else: total_episodes = int(total_episodes)
+        
         print()
 
         digs = re.findall(r'\d+',base)[-1]
@@ -160,14 +207,14 @@ if __name__ == "__main__":
         count, storage_urls, unsucc_eps = fetch_download_links(base_url,total_episodes)
 
         print(f"\n{fg('sky_blue_1')}DOWNLOADING EPISODES...")
-        print(f"{fg('white')}",end='')
 
-        for i,url in enumerate(storage_urls,start=1):
-            if(i in unsucc_eps): continue
-            whiteLine()
-            downloadVideoToLocal(url, Folder_name + " EP " + str(i), Folder_name + '/' + Folder_name + " EP " + str(i))
-        
-        whiteLine()
+        for tup in storage_urls:
+            greenLine()
+            file_name = Folder_name + " EP "
+            downloadVideoToLocal(tup[1], file_name + str(tup[0]), f"{Folder_name}/{file_name}{tup[0]}")
+
+        greenLine()
+
         print(f"{fg('sky_blue_1')}[-] [INFO] Done! {count} Episode(s) downloaded.")
         if(len(unsucc_eps) != 0):
             print()
@@ -178,6 +225,8 @@ if __name__ == "__main__":
         print()
         Bye()
     except KeyboardInterrupt:
-        print(f"{fg('white')}\n\nOperation Interrupted by user.\n")
+        print("\r"+" "*100)
+        print(f"{fg('white')}\nOperation Interrupted by user.\n")
         Bye()
+
 

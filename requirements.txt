@@ -1,6 +1,6 @@
 requests
 colored
-tqdm
+youtube-dl
 bs4
 
 
